@@ -29,7 +29,7 @@ start = timeit.default_timer()
 # IDEA: llenar con nans los campos que tengan X = 0 and e_X = 0.
 # luego crear un c distinto dependiendo de que valores esten disponibles.
 
-save = True
+save = False
 show = False
 verbose = False
 
@@ -39,8 +39,11 @@ verbose = False
 
 #catalog_name = 'MatchAndWithin_D02+K13_Gaia_2deg_5r1_wPrior'
 #catalog_name = 'MatchAndWithin_D02+K13_Gaia_2deg_5r1_05-04-19_dupRemoved_wPrior.csv'
-#catalog_name = 'MatchAndWithin_D02+K13_Gaia_2deg_5r1_12-04-19_dupRemoved_wPrior.csv'
-catalog_name = 'MatchAndWithin_D02+K13_Gaia_2deg_5r1_27-05-19_dupRem_wPrior.csv'
+
+#catalog_name = 'MatchAndWithin_D02+K13_Gaia_2deg_5r1_12-04-19_dupRemoved_wPrior_RVMelnikOnly.csv'
+#catalog_name = 'MatchAndWithin_D02+K13_Gaia_2deg_5r1_12-04-19_dupRemoved_wPrior_RVMelnikOnly_ErrsTweak.csv'
+#catalog_name = 'MatchAndWithin_D02+K13_Gaia_2deg_5r1_12-04-19_dupRemoved_wPrior_RVMelnikOnly_SELECTED_ErrsTweak.csv'
+catalog_name = 'MatchAndWithin_D02+K13_Gaia_2deg_5r1_27-05-19_dupRem_wPrior_RVMelnikOnly_ErrsTweak.csv'
 
 #catalog_name = 'test_membership.csv'
 
@@ -63,10 +66,12 @@ def cov(x, y):
 #df['e_parallax_cluster'] = 1000.*df['e_Dist']/(df['Dist']*df['Dist']) 
 
 
+parallax_gaia_zp = -0.03
+
 # add columns with differences
 # delta                 cluster   -   cepheid
-df['parallax_diff'] = df['parallax_cluster_withCG'] - df['parallax']
-df['vr_diff']       = df['RV_withCarrera19_CARRERA'] - df['RV_gaiaravevsmelnik_MELNIK']
+df['parallax_diff'] = df['parallax_cluster_withCG'] - (df['parallax']+parallax_gaia_zp)   # 	, 	#cep_par 		 = cep_par - parallax_gaia_zp
+df['vr_diff']       = df['RV_withCarrera19_CARRERA'] - df['HRV_melnik']
 df['pmRA_diff']     = df['pmRA_withCG'] - df['pmra']
 df['pmDEC_diff']    = df['pmDEC_withCG'] - df['pmdec']
 #df['FeH_diff']      = df['[]'] - df['mag_2']
@@ -90,7 +95,9 @@ i_3 = 0
 i_4 = 0
 
 i = 0
-#i = 2200
+i = 4600
+#i = 8556
+#i = 2397
 while i < largo:
 
 	if (i+1)%200==0:
@@ -107,8 +114,8 @@ while i < largo:
 
 	cep_par    = subdf['parallax'] 
 	ecep_par   = subdf['parallax_error']
-	cep_rv     = subdf['RV_gaiaravevsmelnik_MELNIK']
-	ecep_rv    = subdf['e_RV_gaiaravevsmelnik_MELNIK']
+	cep_rv     = subdf['HRV_melnik']
+	ecep_rv    = subdf['e_HRV_melnik']
 	cep_pmra   = subdf['pmra']
 	ecep_pmra  = subdf['pmra_error']
 	cep_pmdec  = subdf['pmdec']
@@ -125,17 +132,19 @@ while i < largo:
 	oc_pmdec  = subdf['pmDEC_withCG']
 	eoc_pmdec = subdf['e_pmDEC_withCG']
 
-	parallax_gaia_zp = -0.03
+	#parallax_gaia_zp = -0.03
 	cep_par 		 = cep_par - parallax_gaia_zp
 
-	lamda_pm_systematic = 0.035	
+	sigma_pm_systematic = 0.035
 
-	ruwe      = subdf['ruwe']
+	ruwe      = subdf['ruwe']	
 	if math.isnan(ruwe):
 		ruwe = 22 # the maximum value within the catalog is 21.76
 
 	if ruwe <= 1.4:
 		ruwe = 1.0
+
+	
 
 	#print '\n----------------------------------------------------------------------------------'
 	#print 'Cepheids: par, e_par, rv, e_rv, pmra, e_pmra, pmdec, e_pmdec --> ', cep_par, ecep_par, cep_rv, ecep_rv, cep_pmra, ecep_pmra, cep_pmdec, ecep_pmdec
@@ -157,6 +166,7 @@ while i < largo:
 					p_val = 1
 					P_B_A = 1. - p_val
 					i_0 = i_0+1
+
 					
 				else:
 					dof = 1 # only d !=0
@@ -167,7 +177,7 @@ while i < largo:
 					M1 = subdf['e_pmDEC_withCG']**2
 
 					# covariance matrix cepheid
-					M2 = (ruwe**2)*subdf['pmdec_error']**2
+					M2 = (ruwe**2)*subdf['pmdec_error']**2 + sigma_pm_systematic**2
 
 					# sum of covariance matrices
 					Matrix = M1+M2
@@ -202,7 +212,7 @@ while i < largo:
 				# covariance matrix cluster    pmRA	
 				M1 = subdf['e_pmRA_withCG']**2
 				# covariance matrix cepheid
-				M2 = (ruwe**2)*subdf['pmra_error']**2
+				M2 = (ruwe**2)*subdf['pmra_error']**2 + sigma_pm_systematic**2
 
 				# sum of covariance matrices
 				Matrix = M1+M2
@@ -244,8 +254,10 @@ while i < largo:
 				cov_pmra_pmdec = subdf['pmra_pmdec_corr']*subdf['pmra_error']*subdf['pmdec_error']
 
 				# covariance matrix cepheid
-				M2 = (ruwe**2)*np.matrix([[subdf['pmra_error']**2, cov_pmra_pmdec],
-						[cov_pmra_pmdec, subdf['pmdec_error']**2]])
+				M2 = (ruwe**2)*np.matrix([[subdf['pmra_error']**2,   cov_pmra_pmdec],
+						                [cov_pmra_pmdec,             subdf['pmdec_error']**2]])
+				M2 = M2 + np.matrix([[sigma_pm_systematic**2,   0],
+						                [0,             sigma_pm_systematic**2]])
 
 
 				# sum of covariance matrices
@@ -283,7 +295,7 @@ while i < largo:
 				# covariance matrix cluster    RV	
 				M1 = subdf['e_RV_withCarrera19_CARRERA']**2
 				# covariance matrix cepheid
-				M2 = (ruwe**2)*subdf['e_RV_gaiaravevsmelnik_MELNIK']**2
+				M2 = (ruwe**2)*subdf['e_HRV_melnik']**2
 
 				# sum of covariance matrices
 				Matrix = M1+M2
@@ -323,8 +335,10 @@ while i < largo:
 				cov_rv_pmdec   = 0.
 
 				# covariance matrix cepheid
-				M2 = (ruwe**2)*np.matrix([[subdf['e_RV_gaiaravevsmelnik_MELNIK']**2, cov_rv_pmdec],
+				M2 = (ruwe**2)*np.matrix([[subdf['e_HRV_melnik']**2, cov_rv_pmdec],
 						[cov_rv_pmdec, subdf['pmdec_error']**2]])
+				M2 = M2 + np.matrix([[0,   0],
+						                [0,             sigma_pm_systematic**2]])
 
 				# sum of covariance matrices
 				Matrix = M1+M2
@@ -366,8 +380,11 @@ while i < largo:
 			cov_rv_pmra    = 0.
 				
 			# covariance matrix cepheid
-			M2 = (ruwe**2)*np.matrix([[subdf['e_RV_gaiaravevsmelnik_MELNIK']**2, cov_rv_pmra],
+			M2 = (ruwe**2)*np.matrix([[subdf['e_HRV_melnik']**2, cov_rv_pmra],
 					[cov_rv_pmra, subdf['pmra_error']**2]])
+
+			M2 = M2 + np.matrix([[0,   0],
+						                [0,       sigma_pm_systematic**2]])			
 
 			# sum of covariance matrices
 			Matrix = M1+M2
@@ -413,9 +430,13 @@ while i < largo:
 			cov_pmra_pmdec = subdf['pmra_pmdec_corr']*subdf['pmra_error']*subdf['pmdec_error']
 	
 			# covariance matrix cepheid
-			M2 = (ruwe**2)*np.matrix([[subdf['e_RV_gaiaravevsmelnik_MELNIK']**2, cov_rv_pmra, cov_rv_pmdec],
+			M2 = (ruwe**2)*np.matrix([[subdf['e_HRV_melnik']**2, cov_rv_pmra, cov_rv_pmdec],
 					[cov_rv_pmra, subdf['pmra_error']**2, cov_pmra_pmdec],
 					[cov_rv_pmdec, cov_pmra_pmdec, subdf['pmdec_error']**2]])
+
+			M2 = M2 + np.matrix([[0, 0, 0],
+					[0, sigma_pm_systematic**2, 0],
+					[0,0, sigma_pm_systematic**2]])
 
 			# sum of covariance matrices
 			Matrix = M1+M2
@@ -497,6 +518,8 @@ while i < largo:
 				# covariance matrix cepheid
 				M2 = (ruwe**2)*np.matrix([[subdf['parallax_error']**2, cov_par_pmdec], 
 						[cov_par_pmdec, subdf['pmdec_error']**2]])
+				M2 = M2 + np.matrix([[0, 0],
+					[0, sigma_pm_systematic**2]])
 
 				# sum of covariance matrices
 				Matrix = M1+M2
@@ -541,6 +564,9 @@ while i < largo:
 			# covariance matrix cepheid
 			M2 = (ruwe**2)*np.matrix([[subdf['parallax_error']**2, cov_par_pmra], 
 					[cov_par_pmra, subdf['pmra_error']**2]])
+
+			M2 = M2 + np.matrix([[0, 0],
+					[0, sigma_pm_systematic**2]])
 	
 			# sum of covariance matrices
 			Matrix = M1+M2
@@ -589,6 +615,10 @@ while i < largo:
 					[cov_par_pmra, subdf['pmra_error']**2, cov_pmra_pmdec],
 					[cov_par_pmdec, cov_pmra_pmdec, subdf['pmdec_error']**2]])
 
+			M2 = M2 + np.matrix([[0, 0, 0],
+					[0, sigma_pm_systematic**2, 0],
+					[0,0, sigma_pm_systematic**2]])
+
 			# sum of covariance matrices
 			Matrix = M1+M2
 
@@ -616,6 +646,7 @@ while i < largo:
 			df.P_B_A.iloc[i]  = chi2.sf(float(c), dof)
 			df.p_val.iloc[i]  = 1. - chi2.sf(float(c), dof)
 
+
 	elif (cep_pmra == 0 and ecep_pmra == 0) or (oc_pmra == 0 and eoc_pmra == 0):
 		if (cep_pmdec == 0 and ecep_pmdec == 0) or (oc_pmdec == 0 and eoc_pmdec == 0): # ds == 0
 			dof = 2 # a and b != 0
@@ -634,7 +665,7 @@ while i < largo:
 
 			# covariance matrix cepheid
 			M2 = (ruwe**2)*np.matrix([[subdf['parallax_error']**2, cov_par_rv], 
-					[cov_par_rv, subdf['e_RV_gaiaravevsmelnik_MELNIK']**2]])
+					[cov_par_rv, subdf['e_HRV_melnik']**2]])
 	
 	
 			# sum of covariance matrices
@@ -681,8 +712,12 @@ while i < largo:
 
 			# covariance matrix cepheid
 			M2 = (ruwe**2)*np.matrix([[subdf['parallax_error']**2, cov_par_rv, cov_par_pmdec], 
-					[cov_par_rv, subdf['e_RV_gaiaravevsmelnik_MELNIK']**2, cov_rv_pmdec],
+					[cov_par_rv, subdf['e_HRV_melnik']**2, cov_rv_pmdec],
 					[cov_par_pmdec, cov_rv_pmdec, subdf['pmdec_error']**2]])
+
+			M2 = M2 + np.matrix([[0, 0, 0],
+					[0, 0, 0],
+					[0,0, sigma_pm_systematic**2]])
 
 			# sum of covariance matrices
 			Matrix = M1+M2
@@ -728,8 +763,12 @@ while i < largo:
 
 		# covariance matrix cepheid
 		M2 = (ruwe**2)*np.matrix([[subdf['parallax_error']**2, cov_par_rv, cov_par_pmra], 
-				[cov_par_rv, subdf['e_RV_gaiaravevsmelnik_MELNIK']**2, cov_rv_pmra],
+				[cov_par_rv, subdf['e_HRV_melnik']**2, cov_rv_pmra],
 				[cov_par_pmra, cov_rv_pmra, subdf['pmra_error']**2]])
+
+		M2 = M2 + np.matrix([[0, 0, 0],
+					[0, 0, 0],
+					[0, 0, sigma_pm_systematic**2]])
 
 		# sum of covariance matrices
 		Matrix = M1+M2
@@ -779,10 +818,14 @@ while i < largo:
 
 		# covariance matrix cepheid
 		M2 = (ruwe**2)*np.matrix([[subdf['parallax_error']**2, cov_par_rv, cov_par_pmra, cov_par_pmdec], 
-				[cov_par_rv, subdf['e_RV_gaiaravevsmelnik_MELNIK']**2, cov_rv_pmra, cov_rv_pmdec],
+				[cov_par_rv, subdf['e_HRV_melnik']**2, cov_rv_pmra, cov_rv_pmdec],
 				[cov_par_pmra, cov_rv_pmra, subdf['pmra_error']**2, cov_pmra_pmdec],
 				[cov_par_pmdec, cov_rv_pmdec, cov_pmra_pmdec, subdf['pmdec_error']**2]])
 
+		M2 = M2 + np.matrix([[0,0,0,0], 
+				[0,0,0,0],
+				[0,0, sigma_pm_systematic**2, 0],
+				[0,0,0, sigma_pm_systematic**2]])
 
 		# sum of covariance matrices
 		Matrix = M1+M2
@@ -807,11 +850,13 @@ while i < largo:
 		df.P_B_A.iloc[i]  = chi2.sf(float(c), dof) 
 		df.p_val.iloc[i]  = 1. - chi2.sf(float(c), dof)
 
+	df.cluster_cepheid.iloc[i]  = subdf['Cluster_name'] + '_' + subdf['Var_Name'].replace(" ","_")
 
 	if pd.isnull(subdf['Var_Name']):  # == ""		
 		df.cluster_cepheid.iloc[i]  = subdf['Cluster_name'] + '_' 
 	else:
 		df.cluster_cepheid.iloc[i]  = subdf['Cluster_name'] + '_' + subdf['Var_Name'].replace(" ","_")
+
 	del subdf
 
 	i = i+1

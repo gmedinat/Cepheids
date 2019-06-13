@@ -39,8 +39,7 @@ verbose = False
 
 #catalog_name = 'MatchAndWithin_D02+K13_Gaia_2deg_5r1_wPrior'
 #catalog_name = 'MatchAndWithin_D02+K13_Gaia_2deg_5r1_05-04-19_dupRemoved_wPrior.csv'
-#catalog_name = 'MatchAndWithin_D02+K13_Gaia_2deg_5r1_12-04-19_dupRemoved_wPrior.csv'
-catalog_name = 'MatchAndWithin_D02+K13_Gaia_2deg_5r1_27-05-19_dupRem_wPrior.csv'
+catalog_name = 'MatchAndWithin_D02+K13_Gaia_2deg_5r1_12-04-19_dupRemoved_wPrior.csv'
 
 #catalog_name = 'test_membership.csv'
 
@@ -76,8 +75,6 @@ df['dfreed']    = 0.
 df['c']      = 0.
 df['p_val']   = 0.
 df['P_B_A'] = 0.
-
-df['cluster_cepheid'] = ""
 
 n_nans = 0
 
@@ -136,6 +133,9 @@ while i < largo:
 
 	if ruwe <= 1.4:
 		ruwe = 1.0
+	
+	cep_rv = 0
+	ecep_rv = 0
 
 	#print '\n----------------------------------------------------------------------------------'
 	#print 'Cepheids: par, e_par, rv, e_rv, pmra, e_pmra, pmdec, e_pmdec --> ', cep_par, ecep_par, cep_rv, ecep_rv, cep_pmra, ecep_pmra, cep_pmdec, ecep_pmdec
@@ -157,6 +157,7 @@ while i < largo:
 					p_val = 1
 					P_B_A = 1. - p_val
 					i_0 = i_0+1
+
 					
 				else:
 					dof = 1 # only d !=0
@@ -167,7 +168,7 @@ while i < largo:
 					M1 = subdf['e_pmDEC_withCG']**2
 
 					# covariance matrix cepheid
-					M2 = (ruwe**2)*subdf['pmdec_error']**2
+					M2 = (ruwe**2)*subdf['pmdec_error']**2 + sigma_pm_systematic**2
 
 					# sum of covariance matrices
 					Matrix = M1+M2
@@ -202,7 +203,7 @@ while i < largo:
 				# covariance matrix cluster    pmRA	
 				M1 = subdf['e_pmRA_withCG']**2
 				# covariance matrix cepheid
-				M2 = (ruwe**2)*subdf['pmra_error']**2
+				M2 = (ruwe**2)*subdf['pmra_error']**2 + sigma_pm_systematic**2
 
 				# sum of covariance matrices
 				Matrix = M1+M2
@@ -246,7 +247,8 @@ while i < largo:
 				# covariance matrix cepheid
 				M2 = (ruwe**2)*np.matrix([[subdf['pmra_error']**2, cov_pmra_pmdec],
 						[cov_pmra_pmdec, subdf['pmdec_error']**2]])
-
+				M2 = M2 + np.matrix([[sigma_pm_systematic**2,   0],
+						                [0,             sigma_pm_systematic**2]])
 
 				# sum of covariance matrices
 				Matrix = M1+M2
@@ -326,6 +328,9 @@ while i < largo:
 				M2 = (ruwe**2)*np.matrix([[subdf['e_RV_gaiaravevsmelnik_MELNIK']**2, cov_rv_pmdec],
 						[cov_rv_pmdec, subdf['pmdec_error']**2]])
 
+				M2 = M2 + np.matrix([[0,   0],
+						                [0,             sigma_pm_systematic**2]])
+
 				# sum of covariance matrices
 				Matrix = M1+M2
 		
@@ -368,6 +373,8 @@ while i < largo:
 			# covariance matrix cepheid
 			M2 = (ruwe**2)*np.matrix([[subdf['e_RV_gaiaravevsmelnik_MELNIK']**2, cov_rv_pmra],
 					[cov_rv_pmra, subdf['pmra_error']**2]])
+			M2 = M2 + np.matrix([[0,   0],
+						                [0,       sigma_pm_systematic**2]])		
 
 			# sum of covariance matrices
 			Matrix = M1+M2
@@ -416,6 +423,10 @@ while i < largo:
 			M2 = (ruwe**2)*np.matrix([[subdf['e_RV_gaiaravevsmelnik_MELNIK']**2, cov_rv_pmra, cov_rv_pmdec],
 					[cov_rv_pmra, subdf['pmra_error']**2, cov_pmra_pmdec],
 					[cov_rv_pmdec, cov_pmra_pmdec, subdf['pmdec_error']**2]])
+			M2 = M2 + np.matrix([[0, 0, 0],
+					[0, sigma_pm_systematic**2, 0],
+					[0,0, sigma_pm_systematic**2]])
+
 
 			# sum of covariance matrices
 			Matrix = M1+M2
@@ -497,6 +508,8 @@ while i < largo:
 				# covariance matrix cepheid
 				M2 = (ruwe**2)*np.matrix([[subdf['parallax_error']**2, cov_par_pmdec], 
 						[cov_par_pmdec, subdf['pmdec_error']**2]])
+				M2 = M2 + np.matrix([[0, 0],
+					[0, sigma_pm_systematic**2]])
 
 				# sum of covariance matrices
 				Matrix = M1+M2
@@ -541,6 +554,8 @@ while i < largo:
 			# covariance matrix cepheid
 			M2 = (ruwe**2)*np.matrix([[subdf['parallax_error']**2, cov_par_pmra], 
 					[cov_par_pmra, subdf['pmra_error']**2]])
+			M2 = M2 + np.matrix([[0, 0],
+					[0, sigma_pm_systematic**2]])
 	
 			# sum of covariance matrices
 			Matrix = M1+M2
@@ -588,6 +603,11 @@ while i < largo:
 			M2 = (ruwe**2)*np.matrix([[subdf['parallax_error']**2, cov_par_pmra, cov_par_pmdec], 
 					[cov_par_pmra, subdf['pmra_error']**2, cov_pmra_pmdec],
 					[cov_par_pmdec, cov_pmra_pmdec, subdf['pmdec_error']**2]])
+
+			M2 = M2 + np.matrix([[0, 0, 0],
+					[0, sigma_pm_systematic**2, 0],
+					[0,0, sigma_pm_systematic**2]])
+
 
 			# sum of covariance matrices
 			Matrix = M1+M2
@@ -683,6 +703,10 @@ while i < largo:
 			M2 = (ruwe**2)*np.matrix([[subdf['parallax_error']**2, cov_par_rv, cov_par_pmdec], 
 					[cov_par_rv, subdf['e_RV_gaiaravevsmelnik_MELNIK']**2, cov_rv_pmdec],
 					[cov_par_pmdec, cov_rv_pmdec, subdf['pmdec_error']**2]])
+			M2 = M2 + np.matrix([[0, 0, 0],
+					[0, 0, 0],
+					[0,0, sigma_pm_systematic**2]])
+
 
 			# sum of covariance matrices
 			Matrix = M1+M2
@@ -730,6 +754,10 @@ while i < largo:
 		M2 = (ruwe**2)*np.matrix([[subdf['parallax_error']**2, cov_par_rv, cov_par_pmra], 
 				[cov_par_rv, subdf['e_RV_gaiaravevsmelnik_MELNIK']**2, cov_rv_pmra],
 				[cov_par_pmra, cov_rv_pmra, subdf['pmra_error']**2]])
+		M2 = M2 + np.matrix([[0, 0, 0],
+					[0, 0, 0],
+					[0, 0, sigma_pm_systematic**2]])
+
 
 		# sum of covariance matrices
 		Matrix = M1+M2
@@ -758,6 +786,10 @@ while i < largo:
 	else: # everything is != 0
 		dof = 4 # a,b,c and d != 0
 
+		print 'cep: ', cep_par, ecep_par   , cep_rv     ,ecep_rv    ,cep_pmra   ,ecep_pmra  ,cep_pmdec  ,ecep_pmdec 
+		print '\n\noc: ', oc_par,eoc_par , oc_rv    , eoc_rv   , oc_pmra  , eoc_pmra ,oc_pmdec  , eoc_pmdec
+		sys.exit(0)
+
 		x_df = subdf[['parallax_diff','vr_diff','pmRA_diff','pmDEC_diff']]
 	
 		x = x_df.as_matrix()
@@ -782,7 +814,10 @@ while i < largo:
 				[cov_par_rv, subdf['e_RV_gaiaravevsmelnik_MELNIK']**2, cov_rv_pmra, cov_rv_pmdec],
 				[cov_par_pmra, cov_rv_pmra, subdf['pmra_error']**2, cov_pmra_pmdec],
 				[cov_par_pmdec, cov_rv_pmdec, cov_pmra_pmdec, subdf['pmdec_error']**2]])
-
+		M2 = M2 + np.matrix([[0,0,0,0], 
+				[0,0,0,0],
+				[0,0, sigma_pm_systematic**2, 0],
+				[0,0,0, sigma_pm_systematic**2]])
 
 		# sum of covariance matrices
 		Matrix = M1+M2
@@ -807,11 +842,6 @@ while i < largo:
 		df.P_B_A.iloc[i]  = chi2.sf(float(c), dof) 
 		df.p_val.iloc[i]  = 1. - chi2.sf(float(c), dof)
 
-
-	if pd.isnull(subdf['Var_Name']):  # == ""		
-		df.cluster_cepheid.iloc[i]  = subdf['Cluster_name'] + '_' 
-	else:
-		df.cluster_cepheid.iloc[i]  = subdf['Cluster_name'] + '_' + subdf['Var_Name'].replace(" ","_")
 	del subdf
 
 	i = i+1
@@ -819,7 +849,8 @@ while i < largo:
 df['P_A*p_val'] = df['P_A']*df['p_val']
 df['P_A*P_B_A'] = df['P_A']*df['P_B_A']
 
-df.to_csv( './'+catalog_name.replace('.csv','_wProbs.csv'), index=False )
+df.to_csv( './'+catalog_name.replace('.csv','_noRVs_wProbs.csv'), index=False )
+
 
 del df
 

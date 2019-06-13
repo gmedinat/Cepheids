@@ -19,7 +19,9 @@ import subprocess
 import pandas as pd
 import glob
 
-catalog_name = 'MatchAndWithin_D02+K13_Gaia_2deg_5r1.csv'
+#catalog_name = 'MatchAndWithin_D02+K13_Gaia_2deg_5r1.csv'
+#atalog_name = 'MatchAndWithin_D02+K13_Gaia_2deg_5r1_12-04-19.csv'
+catalog_name = 'MatchAndWithin_D02+K13_Gaia_2deg_5r1_27-05-19.csv'
 df = pd.read_csv('./'+catalog_name)
 
 
